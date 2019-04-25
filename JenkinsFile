@@ -17,7 +17,7 @@ pipeline {
         }
         stage('Deploy') {
             steps {
-                sh 'cp target/betway-scraper.jar /home/ec2-user/betway-scraper/'
+                sh 'cp target/scala-2.12/betway-scraper.jar /home/ec2-user/betway-scraper/'
             }
         }
     }
