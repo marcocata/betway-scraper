@@ -4,23 +4,15 @@ pipeline {
     options {
         buildDiscarder(logRotator(numToKeepStr: '5'))
     }
-    tools {
-        maven 'Maven3'
-    }
     stages {
         stage ('Initialize') {
             steps {
                 sh 'printenv'
             }
         }
-        stage('Build') {
+        stage('Package') {
             steps {
-                sh "mvn clean package -U -P${BRANCH_NAME}"
-            }
-        }
-        stage('Deploy') {
-            steps {
-                sh "bash scripts/deploy.sh ${BRANCH_NAME}"
+                sh "${tool name: 'sbt', type: 'org.jvnet.hudson.plugins.SbtPluginBuilder$SbtInstallation'}/bin/sbt package"
             }
         }
     }
