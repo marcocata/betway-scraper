@@ -13,3 +13,7 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-json" % "1.3.3",
   "com.surebetfinder" %% "surebetfinder-utils" % "0.1-SNAPSHOT"
 )
+
+artifactName := { (_: ScalaVersion, _: ModuleID, artifact: Artifact) =>
+  artifact.name + "." + artifact.extension
+}

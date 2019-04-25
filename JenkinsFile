@@ -15,5 +15,10 @@ pipeline {
                 sh "${tool name: 'sbt', type: 'org.jvnet.hudson.plugins.SbtPluginBuilder$SbtInstallation'}/bin/sbt package"
             }
         }
+        stage('Deploy') {
+            steps {
+                sh 'cp target/betway-scraper.jar /home/ec2-user/betway-scraper/'
+            }
+        }
     }
 }
