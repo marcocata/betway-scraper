@@ -2,11 +2,15 @@ package com.betway.actor
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{Actor, Props}
+import akka.actor.SupervisorStrategy.Stop
+import akka.actor.{Actor, OneForOneStrategy, Props}
 import akka.event.Logging
+import com.betway.Scraper.logger
+import com.surebetfinder.config.SureBetFinderConfiguration
 import com.surebetfinder.db.Postgres
 import com.surebetfinder.domain.League
 import com.surebetfinder.utils.BashUtils
+import org.postgresql.util.PSQLException
 import spray.json._
 
 import scala.concurrent.Await
@@ -17,8 +21,19 @@ class ScannerActor extends Actor {
 
   private val log = Logging(context.system, this)
 
+  override val supervisorStrategy: OneForOneStrategy =
+    OneForOneStrategy(maxNrOfRetries = 3) {
+      case psqlEx: PSQLException =>
+        log.error("Postgres SQL connection error.")
+        log.error(psqlEx.getMessage)
+        Stop
+    }
+
   def receive: PartialFunction[Any, Unit] = {
-    case postgres: Postgres =>
+    case configuration: SureBetFinderConfiguration =>
+      val postgres = new Postgres(configuration)
+      logger.info("Connection to Postgres DB works fine!")
+
       val cmd = Seq(
         "curl",
         "https://sports.betway.it/api/Events/V2/GetCategoryDetails?t=f01a3f5a-0ed5-4011-815a-9e6a0796c478",
