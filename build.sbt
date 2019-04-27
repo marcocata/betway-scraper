@@ -10,5 +10,5 @@ libraryDependencies ++= Seq(
   "com.surebetfinder" %% "surebetfinder-utils" % "0.1-SNAPSHOT"
 )
 
-mainClass in assembly := Some("com.betway.Scraper")
+mainClass in assembly := Some("com.betway.Main")
 assemblyJarName in assembly := "betway-scraper.jar"
