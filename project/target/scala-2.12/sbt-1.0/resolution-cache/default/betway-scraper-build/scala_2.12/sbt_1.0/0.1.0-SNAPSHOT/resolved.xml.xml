@@ -4,7 +4,7 @@
 		module="betway-scraper-build"
 		revision="0.1.0-SNAPSHOT"
 		status="integration"
-		publication="20190427152829"
+		publication="20190428161749"
 		e:sbtVersion="1.0" e:scalaVersion="2.12"
 	>
 		<description>

@@ -1,28 +1,38 @@
 package com.betway.actor
 
 import com.betway.Main
-import com.surebetfinder.domain.{Bookmaker, Event, League, Team}
+import com.surebetfinder.domain.{Bookmaker, Event, League, Linux, Os, Team, Windows}
 import com.surebetfinder.utils.BashUtils
 import com.betway.Main.logger
 import com.betway.domain.{Market, Outcome}
 import com.surebetfinder.db.Postgres
 import spray.json._
+
 import scala.util.{Failure, Success, Try}
 
 object Scanner {
+
+  private val OS: Os = BashUtils.getOs
 
   /**
     * Retrieve all leagues for category 'soccer'
     * @return a Vector of League objects
     */
   def getLeagues: Vector[League] = {
+    val dataBinary = OS match {
+      case Windows  => """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"CategoryCName\":\"soccer\",\"ApplicationId\":5,\"TerritoryId\":110,\"ViewName\":\"sports\"}"""
+      case _        => "{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"CategoryCName\":\"soccer\",\"ApplicationId\":5,\"TerritoryId\":110,\"ViewName\":\"sports\"}"
+    }
+
     val cmd = Seq(
       "curl",
-      "https://sports.betway.it/api/Events/V2/GetCategoryDetails?t=f01a3f5a-0ed5-4011-815a-9e6a0796c478",
-      "-H",
-      "Content-Type: application/json; charset=UTF-8",
-      "--data-binary",
-      """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"CategoryCName\":\"soccer\"}"""
+      "https://sports.betway.it/api/Events/V2/GetCategoryDetails",
+      "-H", "Origin: https://sports.betway.it",
+      "-H", "Accept-Language: it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+      "-H", "Content-Type: application/json; charset=UTF-8",
+      "-H", "Accept: application/json; charset=UTF-8",
+      "-H", "Referer: https://sports.betway.it/it/sports/cat/soccer",
+      "--data-binary", dataBinary//, "--compressed"
     )
 
     Try(BashUtils.executeCmd(cmd)) match {
@@ -79,15 +89,15 @@ object Scanner {
     */
   def getEvents(league: League, postgres: Postgres): Unit = {
     logger.info(s"Getting odds of ${league.countryIdSite}/${league.leagueIdSite}...")
+
+    val dataBinary = OS match {
+      case Windows  => """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1, \"CategoryCName\":\"soccer\",\"SubCategoryCName\":\"""".stripMargin + league.countryIdSite + """\",\"GroupCName\":\"""" + league.leagueIdSite + """\"}"""
+      case _        => "{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1, \"CategoryCName\":\"soccer\",\"SubCategoryCName\":\"".stripMargin + league.countryIdSite + "\",\"GroupCName\":\"" + league.leagueIdSite + "\"}"
+    }
     val cmd = Seq(
-      "curl",
-      "https://sports.betway.it/api/Events/V2/GetGroup",
-      "-H",
-      "Content-Type: application/json; charset=UTF-8",
-      "--data-binary",
-      """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,
-           \"CategoryCName\":\"soccer\",\"SubCategoryCName\":\"""".stripMargin + league.countryIdSite +
-        """\",\"GroupCName\":\"""" + league.leagueIdSite + """\"}"""
+      "curl", "https://sports.betway.it/api/Events/V2/GetGroup",
+      "-H", "Content-Type: application/json; charset=UTF-8",
+      "--data-binary", dataBinary
     )
 
     Try(BashUtils.executeCmd(cmd)) match {
@@ -95,15 +105,14 @@ object Scanner {
         val leagueEvents = extractEvents(cmdResult).mkString(",")
 
         // get league odds
+        val dataBinary = OS match {
+          case Windows  => """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"ExternalIds\":[""" + leagueEvents + """],\"MarketCName\":\"win-draw-win\",\"ScoreboardRequest\":{\"ScoreboardType\":3,\"IncidentRequest\":{}},\"ApplicationId\":5,\"ViewName\":\"sports\"}"""
+          case _        => "{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"ExternalIds\":[" + leagueEvents + "],\"MarketCName\":\"win-draw-win\",\"ScoreboardRequest\":{\"ScoreboardType\":3,\"IncidentRequest\":{}},\"ApplicationId\":5,\"ViewName\":\"sports\"}"
+        }
         val cmdEvents = Seq(
-          "curl",
-          "https://sports.betway.it/api/Events/V2/GetEvents",
-          "-H",
-          "Content-Type: application/json; charset=UTF-8",
-          "--data-binary",
-          """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,
-            \"ExternalIds\":[""" + leagueEvents + """],\"MarketCName\":\"win-draw-win\",\"ScoreboardRequest\":{\"ScoreboardType\":3
-            ,\"IncidentRequest\":{}},\"ApplicationId\":5,\"ViewName\":\"sports\"}"""
+          "curl", "https://sports.betway.it/api/Events/V2/GetEvents",
+          "-H", "Content-Type: application/json; charset=UTF-8",
+          "--data-binary", dataBinary
         )
 
         Try(BashUtils.executeCmd(cmdEvents)) match {
