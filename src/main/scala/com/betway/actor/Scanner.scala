@@ -5,7 +5,7 @@ import com.surebetfinder.domain.{Bookmaker, Event, League, Linux, Os, Team, Wind
 import com.surebetfinder.utils.BashUtils
 import com.betway.Main.logger
 import com.betway.domain.{Market, Outcome}
-import com.surebetfinder.db.Postgres
+import com.surebetfinder.config.Postgres
 import spray.json._
 
 import scala.util.{Failure, Success, Try}
@@ -41,7 +41,7 @@ object Scanner {
         leagues
 
       case Failure(fail) =>
-        logger.error("Some error has occured while executing " + cmd.mkString + " command!")
+        logger.error("Some error has occurred while executing " + cmd.mkString + " command!")
         fail.printStackTrace()
         Vector.empty
     }

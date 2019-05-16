@@ -1,10 +1,11 @@
 package com.betway
 
 import java.util.concurrent.TimeUnit
+
 import com.betway.actor.Scanner
-import com.surebetfinder.config.SureBetFinderConfiguration
-import com.surebetfinder.db.Postgres
+import com.surebetfinder.config.{Postgres, SureBetFinderConfiguration}
 import com.typesafe.scalalogging.Logger
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
