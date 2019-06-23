@@ -6,6 +6,8 @@ if [ "$count" -gt "0" ]; then
   ps aux | grep ${BASE_PATH}/betway-scraper.jar | grep -v grep | awk '{print $2}' | xargs kill -9
 fi
 # move old log file, then mantain last 10 files more recent
+cd ${BASE_PATH}/logs
+ls -tp | grep -v '/$' | tail -n +11 | xargs -I {} rm -- {}
 if [ -f ${BASE_PATH}/scraper.log ]; then
   mv ${BASE_PATH}/scraper.log ${BASE_PATH}/logs/betway_$(date +"%Y-%m-%d_%H-%M").log
 fi

@@ -1,13 +1,13 @@
 name := "betway-scraper"
 
-version := "0.1"
+version := "0.2"
 
 scalaVersion := "2.12.8"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.5" % "test",
-  "io.spray" %% "spray-json" % "1.3.3",
-  "com.surebetfinder" %% "surebetfinder-utils" % "0.3"
+  "com.google.code.gson" % "gson" % "2.8.5",
+  "com.surebetfinder" %% "surebetfinder-utils" % "0.5.4"
 )
 
 mainClass in assembly := Some("com.betway.Main")
