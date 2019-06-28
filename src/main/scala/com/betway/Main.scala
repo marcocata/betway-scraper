@@ -1,13 +1,7 @@
 package com.betway
 
-import java.util.concurrent.TimeUnit
-
 import com.surebetfinder.config.{Postgres, SureBetFinderConfiguration}
 import com.typesafe.scalalogging.Logger
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
 
 object Main {
 
@@ -25,12 +19,12 @@ object Main {
     // retrieve leagues
     val scanner = new Scanner(postgres)
     val leagues = scanner.getLeagues()
-    leagues.foreach(println)
 
-    // threads execution
-    val tasks = for {league <- leagues} yield Future { scanner.getEvents(league) }
-    val aggregated = Future.sequence(tasks)
-    Await.ready(aggregated, Duration(4, TimeUnit.MINUTES))
+    // getting events execution
+    leagues.foreach { league =>
+      println(league)
+      scanner.getEvents(league)
+    }
 
     // closing postgres
     postgres.closeConnection()
