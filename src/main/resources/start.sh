@@ -1,4 +1,5 @@
 #!/bin/sh
+for pid in $(ps -ef | grep "chrome" | awk '{print $2}'); do kill -9 $pid; done
 export BASE_PATH=/surebet-finder/betway-scraper
 # kill eventually instances
 count=$(ps aux | grep ${BASE_PATH}/betway-scraper.jar | grep -v grep | wc -l)
