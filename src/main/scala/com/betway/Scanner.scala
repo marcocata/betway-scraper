@@ -131,14 +131,12 @@ class Scanner(postgres: Postgres) {
               postgres.insertIntoDB(events)
             }
 
-          case Failure(fail)    =>
+          case Failure(_)    =>
             logger.error("Some error has occured while executing " + cmdEvents.mkString + " command!")
-            logger.error(fail.getMessage)
         }
 
-      case Failure(fail) =>
+      case Failure(_) =>
         logger.error("Some error has occured while executing " + cmd.mkString + " command!")
-        logger.error(fail.getMessage)
     }
   }
 
