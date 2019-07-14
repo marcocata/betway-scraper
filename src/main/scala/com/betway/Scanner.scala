@@ -69,14 +69,14 @@ class Scanner(postgres: Postgres) {
 
         leaguesArray.map { league =>
           val leagueObj = league.getAsJsonObject
-          val leagueName = extractNameId(leagueObj, "GroupName")
+          val leagueName = countryName + "-" + extractNameId(leagueObj, "GroupName")
           val leagueId = extractNameId(leagueObj, "GroupCName")
 
           League(
             postgres.leagues.getOrElse(leagueName, League.empty).leagueIdPostgres,
             leagueId,
             "",
-            countryName + "-" + leagueName,
+            leagueName,
             -1,
             countryId,
             "",
