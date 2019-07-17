@@ -19,10 +19,10 @@ class Scanner(postgres: Postgres) {
     * Retrieve all leagues for category 'soccer'
     * @return a List of League objects
     */
-  def getLeagues(): List[League] = {
+  def getLeagues(sport: String): List[League] = {
     val dataBinary = OS match {
-      case Windows  => """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"CategoryCName\":\"soccer\",\"ApplicationId\":5,\"TerritoryId\":110,\"ViewName\":\"sports\"}"""
-      case _        => "{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"CategoryCName\":\"soccer\",\"ApplicationId\":5,\"TerritoryId\":110,\"ViewName\":\"sports\"}"
+      case Windows  => """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"CategoryCName\":\"""".stripMargin + sport + """\",\"ApplicationId\":5,\"TerritoryId\":110,\"ViewName\":\"sports\"}"""
+      case _        => "{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"CategoryCName\":\"" + sport + "\",\"ApplicationId\":5,\"TerritoryId\":110,\"ViewName\":\"sports\"}"
     }
 
     val cmd = Seq(
@@ -31,12 +31,12 @@ class Scanner(postgres: Postgres) {
       "-H", "Accept-Language: it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
       "-H", "Content-Type: application/json; charset=UTF-8",
       "-H", "Accept: application/json; charset=UTF-8",
-      "-H", "Referer: https://sports.betway.it/it/sports/cat/soccer",
+      "-H", "Referer: https://sports.betway.it/it/sports/cat/" + sport,
       "--data-binary", dataBinary
     )
 
     Try(BashUtils.executeCmd(cmd)) match {
-      case Success(cmdResult) => extractLeagues(cmdResult)
+      case Success(cmdResult) => extractLeagues(cmdResult, sport)
       case Failure(fail) =>
         logger.error("Some error has occurred while executing " + cmd.mkString + " command!")
         fail.printStackTrace()
@@ -50,7 +50,7 @@ class Scanner(postgres: Postgres) {
     * @param cmdOutput, the HTTP response
     * @return a List of League objects
     */
-  private def extractLeagues(cmdOutput: String): List[League] = {
+  private def extractLeagues(cmdOutput: String, sport: String): List[League] = {
     val countriesJson = try {
       val jsonObj = new JsonParser().parse(cmdOutput).getAsJsonObject
       jsonObj.getAsJsonArray("SubCategories").asScala.map(country => country.getAsJsonObject)
@@ -73,7 +73,10 @@ class Scanner(postgres: Postgres) {
           val leagueId = extractNameId(leagueObj, "GroupCName")
 
           League(
-            postgres.leagues.getOrElse(leagueName, League.empty).leagueIdPostgres,
+            sport match {
+              case "soccer" => postgres.leaguesFootball.getOrElse(leagueName, League.empty).leagueIdPostgres
+              case "tennis" => postgres.leaguesTennis.getOrElse(leagueName, League.empty).leagueIdPostgres
+            },
             leagueId,
             "",
             leagueName,
@@ -82,7 +85,12 @@ class Scanner(postgres: Postgres) {
             "",
             countryName,
             postgres.bookmakers.getOrElse(Main.configuration.getSiteName, Bookmaker.empty).id,
-            Main.configuration.getSiteName()
+            Main.configuration.getSiteName(),
+            sport,
+            sport match {
+              case "soccer" => Soccer
+              case "tennis" => Tennis
+            }
           )
         }
       }
@@ -99,8 +107,8 @@ class Scanner(postgres: Postgres) {
     */
   def getEvents(league: League): Unit = {
     val dataBinary = OS match {
-      case Windows  => """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1, \"CategoryCName\":\"soccer\",\"SubCategoryCName\":\"""".stripMargin + league.countryIdSite + """\",\"GroupCName\":\"""" + league.leagueIdSite + """\"}"""
-      case _        => "{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1, \"CategoryCName\":\"soccer\",\"SubCategoryCName\":\"".stripMargin + league.countryIdSite + "\",\"GroupCName\":\"" + league.leagueIdSite + "\"}"
+      case Windows  => """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1, \"CategoryCName\":\"""".stripMargin + league.sport + """\",\"SubCategoryCName\":\"""".stripMargin + league.countryIdSite + """\",\"GroupCName\":\"""" + league.leagueIdSite + """\"}"""
+      case _        => "{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1, \"CategoryCName\":\"".stripMargin + league.sport + "\",\"SubCategoryCName\":\"".stripMargin + league.countryIdSite + "\",\"GroupCName\":\"" + league.leagueIdSite + "\"}"
     }
     val cmd = Seq(
       "curl", "https://sports.betway.it/api/Events/V2/GetGroup",
@@ -113,9 +121,14 @@ class Scanner(postgres: Postgres) {
         val leagueEvents = extractEvents(cmdResult).mkString(",")
 
         // get league odds
+        val marketName = league.sport match {
+          case Soccer => "win-draw-win"
+          case Tennis => "match-winner"
+          case _        => ""
+        }
         val dataBinary = OS match {
-          case Windows  => """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"ExternalIds\":[""" + leagueEvents + """],\"MarketCName\":\"win-draw-win\",\"ScoreboardRequest\":{\"ScoreboardType\":3,\"IncidentRequest\":{}},\"ApplicationId\":5,\"ViewName\":\"sports\"}"""
-          case _        => "{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"ExternalIds\":[" + leagueEvents + "],\"MarketCName\":\"win-draw-win\",\"ScoreboardRequest\":{\"ScoreboardType\":3,\"IncidentRequest\":{}},\"ApplicationId\":5,\"ViewName\":\"sports\"}"
+          case Windows  => """{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"ExternalIds\":[""" + leagueEvents + """],\"MarketCName\":\"""" + marketName + """\",\"ScoreboardRequest\":{\"ScoreboardType\":3,\"IncidentRequest\":{}},\"ApplicationId\":5,\"ViewName\":\"sports\"}"""
+          case _        => "{\"LanguageId\":12,\"ClientTypeId\":2,\"BrandId\":3,\"JurisdictionId\":4,\"ClientIntegratorId\":1,\"ExternalIds\":[" + leagueEvents + "],\"MarketCName\":\"" + marketName + "\",\"ScoreboardRequest\":{\"ScoreboardType\":3,\"IncidentRequest\":{}},\"ApplicationId\":5,\"ViewName\":\"sports\"}"
         }
         val cmdEvents = Seq(
           "curl", "https://sports.betway.it/api/Events/V2/GetEvents",
@@ -128,15 +141,15 @@ class Scanner(postgres: Postgres) {
             val events = extractOdds(result, league)
             if(events.nonEmpty) {
               postgres.deleteLeagueEvents(league)
-              postgres.insertIntoDB(events)
+              postgres.insertIntoDB(league.sport, events)
             }
 
           case Failure(_)    =>
-            logger.error("Some error has occured while executing " + cmdEvents.mkString + " command!")
+            logger.error("Some error has occurred while executing " + cmdEvents.mkString + " command!")
         }
 
       case Failure(_) =>
-        logger.error("Some error has occured while executing " + cmd.mkString + " command!")
+        logger.error("Some error has occurred while executing " + cmd.mkString + " command!")
     }
   }
 
@@ -169,6 +182,11 @@ class Scanner(postgres: Postgres) {
     * @return a List of Event objects
     */
   private def extractOdds(cmdOutput: String, league: League): List[Event] = {
+    val teams = league.sport match {
+      case Soccer => postgres.teamsFootball
+      case Tennis => postgres.teamsTennis
+    }
+
     val eventsJson = try {
       val jsonObj = new JsonParser().parse(cmdOutput).getAsJsonObject
       jsonObj.getAsJsonArray("Events").asScala.map(event => event.getAsJsonObject)
@@ -182,35 +200,33 @@ class Scanner(postgres: Postgres) {
     val odds = extractOdds(cmdOutput)
 
     val eventsUpdated = eventsJson.map { event =>
-      try {
-        val homeName = extractNameId(event, "HomeTeamName")
-        val awayName = extractNameId(event, "AwayTeamName")
-        val eventTs = extractNameId(event, "Milliseconds").toLong / 1000
-        val mkt = extractNameId(event, "CouponMarketId").toInt
+      val homeName = extractNameId(event, "HomeTeamName")
+      val awayName = extractNameId(event, "AwayTeamName")
+      val eventTs = extractNameId(event, "Milliseconds").toLong / 1000
+      val mkt = extractNameId(event, "CouponMarketId")
 
+      if(homeName.nonEmpty && awayName.nonEmpty && mkt.nonEmpty) {
         Event(
           homeName,
-          postgres.teams.getOrElse(homeName, Team.empty).id,
+          teams.getOrElse(homeName, Team.empty).id,
           awayName,
-          postgres.teams.getOrElse(awayName, Team.empty).id,
+          teams.getOrElse(awayName, Team.empty).id,
           eventTs,
           -1,
           TimeUtils.isLive(eventTs),
           extractOdd(mkt, "1", markets, odds),
-          extractOdd(mkt, "X", markets, odds),
+          if(league.sport.equals("soccer")) extractOdd(mkt, "X", markets, odds) else -1.0,
           extractOdd(mkt, "2", markets, odds),
           Main.configuration.getSiteName,
           postgres.bookmakers.getOrElse(Main.configuration.getSiteName, Bookmaker.empty).id,
           league.leagueNameSite,
-          postgres.leagues.getOrElse(league.leagueNameSite, League.empty).leagueIdPostgres
+          league.leagueIdPostgres
         )
-      } catch {
-        case ex: Exception => ex.printStackTrace(); Event.empty
-      }
+      } else Event.empty
     }
 
     eventsUpdated.foreach(println)
-    val eventsUpdatedFiltered = eventsUpdated.filter { e => e.homeId != -1 && e.awayId != -1 && e.bookmakerId != -1 && e.leagueId != -1 && !e.isLive && e.tsEvent != -1 }
+    val eventsUpdatedFiltered = eventsUpdated.filter { e => e.homeId != -1 && e.awayId != -1 && e.bookmakerId != -1 && e.leagueId != -1 && !e.isLive && e.tsEvent != -1 && e.oddHome != -1.0 && e.oddAway != -1.0 }
     logger.info("Retrieved " + eventsUpdatedFiltered.size + " valid events for " + league.countryIdSite + "/" + league.leagueIdSite + " out of a total of " + eventsUpdated.size + " events.")
     eventsUpdatedFiltered.toList
   }
@@ -240,6 +256,7 @@ class Scanner(postgres: Postgres) {
   }
 
   private def extractMarkets(cmdOutput: String): Map[Int, List[Market]] = {
+    println(cmdOutput)
     val marketsJson = try {
       val jsonObj = new JsonParser().parse(cmdOutput).getAsJsonObject
       jsonObj.getAsJsonArray("Markets").asScala.map(event => event.getAsJsonObject)
@@ -286,13 +303,13 @@ class Scanner(postgres: Postgres) {
     }
   }
 
-  private def extractOdd(market: Int, label: String, markets: Map[Int, List[Market]], odds: Map[Int, Double]): Double = {
-    val marketList = markets.getOrElse(market, List.empty)
+  private def extractOdd(market: String, label: String, markets: Map[Int, List[Market]], odds: Map[Int, Double]): Double = {
+    val marketList = markets.getOrElse(market.toInt, List.empty)
     if(marketList.nonEmpty) {
       val oddKey = label match {
         case "1" => marketList.head.outcomes.head
         case "X" => marketList.head.outcomes(1)
-        case "2" => marketList.head.outcomes(2)
+        case "2" => marketList.head.outcomes.last
       }
       odds.getOrElse(oddKey, -1.0)
     } else -1.0
