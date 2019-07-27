@@ -1,6 +1,6 @@
 name := "betway-scraper"
 
-version := "0.3"
+version := "0.3.1"
 
 scalaVersion := "2.12.8"
 

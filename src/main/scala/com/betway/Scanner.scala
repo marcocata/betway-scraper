@@ -215,7 +215,7 @@ class Scanner(postgres: Postgres) {
           -1,
           TimeUtils.isLive(eventTs),
           extractOdd(mkt, "1", markets, odds),
-          if(league.sport.equals("soccer")) extractOdd(mkt, "X", markets, odds) else -1.0,
+          if(league.sport.equals(Soccer)) extractOdd(mkt, "X", markets, odds) else -1.0,
           extractOdd(mkt, "2", markets, odds),
           Main.configuration.getSiteName,
           postgres.bookmakers.getOrElse(Main.configuration.getSiteName, Bookmaker.empty).id,
@@ -226,7 +226,7 @@ class Scanner(postgres: Postgres) {
     }
 
     eventsUpdated.foreach(println)
-    val eventsUpdatedFiltered = eventsUpdated.filter { e => e.homeId != -1 && e.awayId != -1 && e.bookmakerId != -1 && e.leagueId != -1 && !e.isLive && e.tsEvent != -1 && e.oddHome != -1.0 && e.oddAway != -1.0 }
+    val eventsUpdatedFiltered = eventsUpdated.filter { e => e.homeId != -1 && e.awayId != -1 && e.bookmakerId != -1 && e.leagueId != -1 && !e.isLive && e.tsEvent != -1 && e.oddHome != -1.0 && e.oddDraw != -1.0 && e.oddAway != -1.0 }
     logger.info("Retrieved " + eventsUpdatedFiltered.size + " valid events for " + league.countryIdSite + "/" + league.leagueIdSite + " out of a total of " + eventsUpdated.size + " events.")
     eventsUpdatedFiltered.toList
   }
